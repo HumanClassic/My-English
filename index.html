@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      /* --- 전역 변수 및 기본 스타일 --- */
+      :root {
+        --primary-color: #4285f4;
+        --danger-color: #ea4335;
+        --success-color: #34a853;
+        --bg-color: #f0f2f5;
+      }
+      body { font-family: 'Noto Sans KR', sans-serif; background-color: var(--bg-color); margin: 0; padding: 0; color: #333; }
+      .container { max-width: 600px; margin: 0 auto; background: white; min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+      
+      /* --- [1] 로그인 화면 (전문가용 모던 디자인) --- */
+      #login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; padding: 20px; }
+      
+      /* 하얀색 예쁜 명함(카드) 스타일 배경 */
+      .login-card { 
+        background: white; padding: 40px 30px; border-radius: 16px; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; max-width: 360px; text-align: center; 
+      }
+      
+      .header-container { margin-bottom: 25px; }
+      .company-logo { width: 70px; height: auto; margin-bottom: 10px; border-radius: 12px; }
+      .company-name { font-size: 16px; color: #333; font-weight: 800; letter-spacing: 0.5px; }
+      .app-title { font-size: 20px; font-weight: 700; color: #222; margin-bottom: 30px; }
+      
+      .input-field { 
+        padding: 14px 15px; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box;
+        font-size: 15px; margin-bottom: 12px; outline: none; transition: 0.3s; background: #fafafa;
+      }
+      .input-field:focus { border-color: var(--primary-color); background: white; }
+      
+      .btn-primary { 
+        background: var(--primary-color); color: white; border: none; padding: 15px; border-radius: 8px; 
+        font-size: 16px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 5px; transition: 0.2s; box-sizing: border-box;
+      }
+      .btn-primary:hover { opacity: 0.9; }
+      
+      .error-msg { color: var(--danger-color); font-size: 13px; margin-top: 12px; display: none; font-weight: bold; }
+      #login-loader { display: none; margin-top: 15px; color: var(--primary-color); font-weight: bold; font-size: 14px; }
+      .footer-copyright { margin-top: 35px; font-size: 11px; color: #aaa; }
+
+      /* --- [2] 계정 공유 경고 모달창 --- */
+      #warning-modal {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; padding: 20px;
+      }
+      .modal-content {
+        background: white; border-radius: 12px; padding: 25px; max-width: 400px; width: 100%;
+        text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      }
+      .modal-icon { font-size: 40px; margin-bottom: 15px; }
+      .modal-title { font-size: 20px; font-weight: bold; color: var(--danger-color); margin-bottom: 15px; }
+      .modal-text { font-size: 15px; line-height: 1.6; color: #444; margin-bottom: 25px; text-align: left; background: #fff3cd; padding: 15px; border-radius: 8px; border: 1px solid #ffeeba;}
+      .btn-agree { background: #333; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold; }
+
+      /* --- [3] 학습 메인 화면 (다중 탭 구조) --- */
+      #app-screen { display: none; padding-bottom: 150px; } /* 하단 플로팅 버튼들 가리지 않게 여백 확장 */
+      
+      .header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: white; position: sticky; top: 0; z-index: 100;}
+      .header h2 { margin: 0; font-size: 18px; color: #222;}
+      .user-info { font-size: 14px; color: #666; font-weight: 500;}
+      #expiry-alert { display: none; background: #ffebee; color: #c62828; padding: 10px 20px; font-size: 13px; font-weight: bold; text-align: center; }
+
+      /* 가로 스크롤 대주제 탭 영역 (화살표 포함) */
+      .tab-wrapper { position: relative; background: #fafafa; border-bottom: 1px solid #ddd; display: flex; align-items: center;}
+      .scroll-arrow { background: white; border: none; font-size: 18px; padding: 15px 10px; cursor: pointer; color: #666; font-weight: bold; z-index: 10; box-shadow: 0 0 5px rgba(0,0,0,0.1); transition: opacity 0.3s ease, visibility 0.3s ease; }
+      .scroll-arrow.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+      .tab-container { display: flex; overflow-x: auto; white-space: nowrap; padding: 15px 10px; scrollbar-width: none; flex: 1; scroll-behavior: smooth;}
+      .tab-container::-webkit-scrollbar { display: none; } 
+      .tab-btn { background: white; border: 1px solid #ccc; color: #555; padding: 10px 20px; margin-right: 10px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+      .tab-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); font-weight: bold; }
+
+      /* [추가] 소주제 필터링 셀렉트 박스 영역 CSS */
+      .filter-container { padding: 15px 20px 0 20px; background: white; }
+      .subtopic-select { 
+        width: 100%; padding: 12px; border: 2px solid var(--primary-color); border-radius: 8px; 
+        font-size: 15px; font-family: 'Noto Sans KR', sans-serif; background-color: #f8faff; 
+        color: #333; font-weight: bold; outline: none; cursor: pointer;
+      }
+      .subtopic-select:focus { border-color: #2a56c6; }
+
+      /* 소주제 묶음 헤더 디자인 */
+      .card-topic { font-size: 13px; color: var(--primary-color); font-weight: bold; margin-bottom: 12px; }
+      
+      .list-area { padding: 0 20px 20px 20px; }
+      .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; transition: 0.3s; }
+      .card.completed { background: #e8f5e9; border-color: #c8e6c9; }
+      .kor-text { font-size: 16px; color: #444; margin-bottom: 10px; font-weight: 500; line-height: 1.6; }
+      
+      .eng-container { margin-bottom: 15px; }
+      .eng-text { font-size: 18px; font-weight: bold; color: #222; display: none; margin-top: 10px; line-height: 1.6; }
+      .btn-reveal { background-color: #f1f3f4; color: #5f6368; border: 1px dashed #ccc; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; width: 100%; transition: 0.2s; }
+      .btn-reveal.active { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+      /* 버튼 그룹 (4개가 한 줄에 쏙 들어가도록 다이어트!) */
+      .btn-group { display: flex; flex-wrap: nowrap; gap: 6px; margin-top: 15px; }
+      .btn-icon { flex: 0 0 24%; margin: 0; padding: 12px 0; border-radius: 50px; border: none; background: #f8f9fa; color: #5f6368; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; font-weight: 500; transition: 0.3s; }
+.btn-icon:hover { background: #e8eaed; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+      .btn-listen { color: var(--primary-color); border-color: #d2e3fc; }
+      .btn-listen.playing { background: var(--primary-color) !important; color: white !important; }
+      
+      /* 녹음 관련 버튼 디자인 */
+      .btn-record { color: var(--danger-color); border-color: #fad2cf; }
+      .btn-record.recording { background: var(--danger-color) !important; color: white !important; animation: blink 1s infinite; }
+      .btn-play-my { color: var(--success-color); border-color: #c8e6c9; display: none; }
+      @keyframes blink { 50% { opacity: 0.6; } }
+
+      .btn-check { background: transparent; }
+.btn-check.checked { background: #e6fcf5 !important; color: var(--success-color) !important; }
+      
+      /* [핵심] 인쇄 버튼 강력한 시각적 피드백 */
+      .btn-print { color: #555; border-color: #ccc; }
+      .btn-print.checked { background: #333 !important; color: white !important; border-color: #333 !important; }
+      
+      #data-loader { text-align: center; padding: 40px; color: #888; display: none; }
+
+      /* --- [4] 하단 플로팅 버튼들 (Contact & PDF) --- */
+      .fab-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 1000;}
+      
+      /* PDF 다운로드 버튼 */
+      .fab-pdf { width: 60px; height: 60px; background-color: #fff; border: 2px solid #333; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; color: #333; font-weight: bold; font-size: 11px;}
+      .fab-pdf:active { transform: scale(0.9); }
+      
+      /* Contact 버튼 */
+      .fab-contact { width: 60px; height: 60px; background-color: #FEE500; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; text-decoration: none; transition: transform 0.2s; }
+      .fab-contact:active { transform: scale(0.9); }
+      .fab-contact span { font-size: 12px; color: #3A2929; font-weight: 900; }
+    </style>
+  </head>
+  <body>
+
+    <div class="container">
+      
+      <div id="login-screen">
+        <div class="login-card">
+          <div class="header-container">
+            <img src="https://via.placeholder.com/80?text=Logo" alt="이지잉글리쉬 로고" class="company-logo">
+            <div class="company-name">이지잉글리쉬</div>
+          </div>
+          
+          <div class="app-title">나만을 위한 영어회화 교재</div>
+          
+          <input type="text" id="loginId" class="input-field" placeholder="부여받은 아이디를 입력하세요">
+          <input type="password" id="loginPw" class="input-field" placeholder="비밀번호를 입력하세요">
+          <button class="btn-primary" onclick="attemptLogin()">학습 시작하기</button>
+          
+          <div id="login-error" class="error-msg"></div>
+          <div id="login-loader">계정 정보를 확인 중입니다...</div>
+          
+          <div class="footer-copyright">
+            Copyright &copy; <script>document.write(new Date().getFullYear())</script> 이지잉글리쉬. All Rights Reserved.
+          </div>
+        </div>
+      </div>
+
+      <div id="warning-modal">
+        <div class="modal-content">
+          <div class="modal-icon">🚨</div>
+          <div class="modal-title">데이터 보호 및 계정 사용 안내</div>
+          <div class="modal-text">
+            본 앱은 <b><span id="modal-username">학습자</span></b>님만을 위한 1:1 맞춤형 데이터로 구동됩니다.<br><br>
+            타인과 계정을 공유하거나 여러 기기에서 동시 접속할 경우, 누적된 진도율과 '나만의 회화책(PDF)' 추출 데이터가 <b>심각하게 엉키거나 초기화</b>될 수 있으며 이로 인한 데이터 복구는 절대 불가합니다.
+          </div>
+          <button class="btn-agree" onclick="closeModalAndStart()">동의하고 학습 시작하기</button>
+        </div>
+      </div>
+
+      <div id="mypage-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+        <div class="modal-content" style="text-align: left; max-width: 350px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">
+            <div class="modal-title" style="margin: 0; color: #333; font-size: 18px;">👤 내 정보 및 학습 현황</div>
+            <button onclick="closeMyPage()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #888; padding: 0;">✖</button>
+          </div>
+          
+          <div style="background: #f8faff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <div style="margin-bottom: 10px; font-size: 14px;"><b>이름:</b> <span id="mypage-name"></span>님</div>
+            <div style="margin-bottom: 10px; font-size: 14px;"><b>아이디:</b> <span id="mypage-id"></span></div>
+            <div style="margin-bottom: 10px; font-size: 14px;"><b>최근 접속일:</b> <span id="mypage-lastdate"></span></div>
+            <div style="margin-bottom: 10px; font-size: 14px;"><b>구독 결제일:</b> <span id="mypage-payment"></span></div>
+            <div style="margin-bottom: 10px; font-size: 14px;"><b>구독 만료일:</b> <span id="mypage-expire"></span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-size: 14px; color: #ea4335; font-weight: bold;">남은 기간: <span id="mypage-daysleft"></span>일</div>
+              <button onclick="openHistoryModal()" style="background: #333; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">🧾 결제 내역 보기</button>
+            </div>
+          </div>
+
+          <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffeeba;">
+            <div style="font-size: 14px; font-weight: bold; color: #856404; margin-bottom: 5px;">💬 비고</div>
+            <div id="mypage-note" style="font-size: 13px; color: #555; line-height: 1.5; white-space: pre-wrap;"></div>
+          </div>
+
+          <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; border: 1px solid #c8e6c9;">
+            <div style="font-size: 14px; font-weight: bold; color: #2e7d32; margin-bottom: 5px;">📈 나의 학습 진도</div>
+            <div style="font-size: 13px; color: #555;">지금까지 마스터한 문장: <b id="mypage-progress-count" style="font-size: 18px; color: #1b5e20;">0</b>개</div>
+          </div>
+        </div>
+      </div>
+
+            <div id="history-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+        <div class="modal-content" style="text-align: left; max-width: 350px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">
+            <div class="modal-title" style="margin: 0; color: #333; font-size: 18px;">🧾 결제 및 연장 내역</div>
+            <button onclick="closeHistoryModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #888; padding: 0;">✖</button>
+          </div>
+          <ul id="history-list" style="margin: 0; padding-left: 20px; font-size: 14px; color: #444; line-height: 1.8;">
+                      </ul>
+        </div>
+      </div>
+
+      <div id="guide-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+        <div class="modal-content" style="text-align: left; max-width: 450px; max-height: 80vh; overflow-y: auto; padding: 25px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">
+            <div class="modal-title" style="margin: 0; color: #333; font-size: 18px;">💡 개인 학습 시스템 이용 안내</div>
+            <button onclick="closeGuide()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #888; padding: 0;">✖</button>
+          </div>
+
+          <div style="font-size: 14px; color: #444; line-height: 1.6;">
+            <h4 style="color: #4285f4; margin: 0 0 8px 0;">1. 단순한 앱이 아닌, 나만의 '학습 자산 DB'</h4>
+            <p style="margin-top: 0;">이 시스템은 일반적인 영어 콘텐츠 앱이 아닙니다. 수강자 개인의 치열한 학습 흔적이 장기간 축적되고 영구적으로 보존되는 <b>'1:1 전용 학습 자산 데이터베이스'</b>입니다.<br><br>
+            이 공간 안에는 다음과 같은 데이터가 구조화됩니다.<br>
+            • 수업 중 직접 교정된 문장 및 표현 기록<br>
+            • 내 약점 패턴에 맞춘 반복 훈련 구조<br>
+            • 누적된 맞춤 피드백 및 학습 히스토리<br><br>
+            과거의 학습 내용을 언제든 꺼내어 재활용하고, 수업 재개 시 즉각적으로 연계할 수 있는 여러분만의 든든한 <b>학습 베이스캠프</b>가 될 것입니다.</p>
+
+            <h4 style="color: #4285f4; margin: 20px 0 8px 0;">2. 수업 진행 중의 혜택</h4>
+            <p style="margin-top: 0;">수업을 진행하시는 기간 동안에는, 이 강력한 시스템을 <b>별도의 추가 비용 없이</b> 함께 사용하실 수 있습니다. 수업이 거듭될수록 콘텐츠와 데이터가 지속적으로 누적되며, 학습 자산의 밀도와 완성도는 압도적으로 높아집니다.</p>
+
+            <h4 style="color: #4285f4; margin: 20px 0 8px 0;">3. 수업 중단 및 재개 시 이용 규정</h4>
+            <p style="margin-top: 0;">수업을 잠시 중단하시더라도, 이미 축적된 소중한 학습 자산들은 시스템 내에서 계속 열람 및 훈련(듣기/녹음/인쇄 등)이 가능합니다. <span style="font-size:12px; color:#777;">(단, 신규 업데이트는 수업 중에만 이루어집니다.)</span><br><br>
+            추후 수업을 재개하실 경우 <b>수업을 진행한 기간만큼 앱 이용 기간이 자동으로 추가 연장</b>됩니다.</p>
+
+            <h4 style="color: #ea4335; margin: 20px 0 8px 0;">4. 시스템 단독 유지 비용 (초기 구축 기준)</h4>
+            <p style="margin-top: 0;">수업을 중단한 상태에서 개인 데이터베이스 시스템만 단독으로 유지/활용하실 경우의 요금은 다음과 같습니다.<br>
+            • <b>6개월 이용 : 240,000원</b><br>
+            • <b>1년 이용 : 400,000원</b><br>
+            <span style="font-size:12px; color:#777;">※ 데이터 관리 및 서버 유지보수를 위해 최소 이용 단위는 6개월로 제한됩니다.</span></p>
+
+            <h4 style="color: #4285f4; margin: 20px 0 8px 0;">5. 향후 요금 변동 안내</h4>
+            <p style="margin-top: 0; margin-bottom: 0;">향후 축적된 데이터의 밀도와 시스템 관리 기준이 고도화될 경우, 불가피하게 유지 비용이 조정될 수 있습니다.<br>
+            다만, <b>기존 결제 이용자의 이용 조건 및 권리는 별도의 안내 없이 일방적으로 변경되지 않으므로</b> 안심하고 학습에만 매진하시기 바랍니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="memo-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); z-index: 10001;">
+        <div id="memo-modal-box" class="modal-content" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: left; max-width: 400px; width: 90%; background: #fffdf5; border: 2px solid #ffeeba; border-radius: 12px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 0;">
+          <div id="memo-modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #ffeeba; padding-bottom: 12px; margin-bottom: 15px; cursor: grab;">
+            <div class="modal-title" style="margin: 0; color: #856404; font-size: 17px; font-weight: bold; display: flex; align-items: center; gap: 8px;">💡 강사 메모</div>
+            <button onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()" onclick="closeMemoModal()" style="background: #ffeba1; border: none; font-size: 13px; font-weight: bold; cursor: pointer; color: #856404; padding: 6px 12px; border-radius: 6px; transition: 0.2s;">닫기 ✖</button>
+          </div>
+          <div id="memo-modal-content" style="font-size: 15px; color: #333; line-height: 1.6; word-break: break-word;">
+            </div>
+        </div>
+      </div>
+
+      <div id="app-screen">
+        <div class="header">
+          <h2>🎧 나만의 영어회화 교재</h2>
+          <div class="user-info" style="display: flex; align-items: center; gap: 10px;">
+             <div><span id="header-username"></span>님</div>
+<button onclick="openGuide()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; background: #fff; border: 1px solid #ffd54f; border-radius: 6px; color: #b07d00; font-weight: bold;">💡 이용 안내</button>
+             <button onclick="openMyPage()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; background: #eef2f5; border: 1px solid #d2e3fc; border-radius: 6px; color: #4285f4; font-weight: bold;">👤 내 정보</button>
+             <button onclick="logout()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; background: #f1f3f4; border: 1px solid #ccc; border-radius: 6px; color: #555; font-weight: bold;">로그아웃</button>
+          </div>
+        </div>
+        <div id="expiry-alert"></div> 
+        
+        <div class="tab-wrapper">
+          <button class="scroll-arrow hidden" id="arrow-left" onclick="scrollTabs(-150)">&lt;</button>
+          <div class="tab-container" id="tab-nav" onscroll="updateTabArrows()"></div>
+          <button class="scroll-arrow hidden" id="arrow-right" onclick="scrollTabs(150)">&gt;</button>
+        </div>
+
+        <div class="filter-container" id="filter-wrapper" style="display: none;">
+           <select id="subTopicSelect" class="subtopic-select" onchange="filterBySubTopic()">
+              </select>
+        </div>
+
+        <div id="select-all-wrapper" style="display: none; text-align: right; padding: 10px 20px 0 20px;">
+           <button id="btn-select-all" onclick="toggleSelectAll()" style="background:#eef2f5; color:#333; border:1px solid #ccc; padding:8px 15px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px; transition:0.3s;">📥 인쇄 전체 담기</button>
+        </div>
+        <div id="data-loader">데이터를 불러오는 중입니다...</div>
+        <div class="list-area" id="list-container"></div>
+      </div>
+
+      <div class="fab-container">
+        <div class="fab-pdf" onclick="downloadPDF()" title="출력할 문장의 [📥 인쇄] 버튼을 먼저 눌러주세요">
+          <span style="font-size:20px;">📥</span>
+          <span>PDF</span>
+        </div>
+        <a href="https://open.kakao.com/o/sBEl8LTf" target="_blank" class="fab-contact" title="문의하기">
+          <span>Contact</span>
+        </a>
+      </div>
+
+    </div>
+
+    <script>
+      // --- [Vercel 독립용 가상 통신 엔진 (Polyfill)] ---
+      // (나중에 GAS 새 배포 후 발급받은 URL을 아래 빈칸에 넣을 것입니다.)
+      const API_URL = "https://script.google.com/macros/s/AKfycbz-AdB4CM_Z9U0fBcH2mlY4aed2nYtbZNAOqaWFUByUmUckxyRmrjqmYV5JcrzjFh09/exec"; 
+
+      window.google = {
+        script: {
+          run: {
+            withSuccessHandler: function(onSuccess) {
+              this._onSuccess = onSuccess;
+              return this;
+            },
+            withFailureHandler: function(onFailure) {
+              this._onFailure = onFailure;
+              return this;
+            },
+            // 1. 로그인 요청 가로채기
+            verifyLogin: function(id, pw) {
+              this._callAPI("verifyLogin", { id: id, pw: pw });
+            },
+            // 2. 목차 요청 가로채기
+            getAppIndex: function() {
+              this._callAPI("getAppIndex", {});
+            },
+            // 3. 탭 데이터 요청 가로채기
+            getTabData: function(tabName) {
+              this._callAPI("getTabData", { tabName: tabName });
+            },
+            // 4. 진도 저장 요청 가로채기
+            saveProgress: function(userId, progressString) {
+              this._callAPI("saveProgress", { userId: userId, progressString: progressString });
+            },
+            // 내부 통신 변환기 (fetch API로 바꿔서 서버로 쏘기)
+            _callAPI: function(action, payload) {
+              payload.action = action;
+              const successCb = this._onSuccess;
+              const failureCb = this._onFailure;
+              
+              fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (successCb) successCb(data);
+              })
+              .catch(err => {
+                console.error("서버 통신 에러:", err);
+                if (failureCb) failureCb(err);
+              });
+            }
+          }
+        }
+      };
+      // ------------------------------------------------
+
+      // (이 아래부터는 기존에 있던 attemptLogin 등의 관리자님 코드가 그대로 이어집니다.)
+      // --- 전역 변수 ---
+      let g_userId = "";
+      let g_userName = "";
+      let g_myProgress = {}; 
+      let g_printSelection = {}; // [추가] PDF 인쇄용으로 담아둔 문장 목록 (서버 저장 안 함)
+      let g_currentTabData = []; // PDF 다운로드를 위해 현재 불러온 탭 데이터를 저장
+      
+      // [마이페이지용 변수 추가]
+      let g_paymentDate = "";
+      let g_expireDate = "";
+      let g_daysLeft = 0;
+      let g_lastDate = "";
+      let g_note = "";
+      let g_allowedTabs = [];     // [추가] 허용된 탭 목록 보관용
+      let g_paymentHistory = [];  // [추가] 결제 내역 배열 보관용
+      
+      let currentTTS = null;
+      let ttsLoopTimer = null;
+      
+      // 녹음기 변수
+      let g_mediaRecorder = null;
+      let g_audioChunks = [];
+      let g_audioBlobs = {}; 
+      let g_currentAudio = null; 
+
+      // --- [1] 로그인 관련 로직 ---
+      function attemptLogin() {
+        const id = document.getElementById('loginId').value.trim();
+        const pw = document.getElementById('loginPw').value.trim();
+        const errorEl = document.getElementById('login-error');
+        const loader = document.getElementById('login-loader');
+
+        if(!id || !pw) {
+          errorEl.innerText = "아이디와 비밀번호를 모두 입력해주세요.";
+          errorEl.style.display = "block";
+          return;
+        }
+        errorEl.style.display = "none";
+        loader.style.display = "block";
+
+        google.script.run.withSuccessHandler(onLoginSuccess).withFailureHandler(onServerError).verifyLogin(id, pw);
+      }
+
+      function onLoginSuccess(res) {
+        document.getElementById('login-loader').style.display = "none";
+        if(res.success) {
+          g_userId = document.getElementById('loginId').value.trim();
+          g_userName = res.userName;
+          
+          // [추가된 부분: 서버에서 받은 구독 정보 변수에 저장]
+          g_paymentDate = res.paymentDate || "정보 없음";
+          g_expireDate = res.expireDate || "정보 없음";
+          g_daysLeft = res.daysLeft || 0;
+          g_lastDate = res.lastDate || "기록 없음";
+          g_note = res.note || "작성된 내용이 없습니다.";
+          g_allowedTabs = res.allowedTabs || [];       // [추가] 서버에서 받은 허용 탭 권한 
+          g_paymentHistory = res.paymentHistory || []; // [추가] 서버에서 받은 결제 내역 배열 
+
+          localStorage.setItem('auto_id', g_userId);
+          localStorage.setItem('auto_pw', document.getElementById('loginPw').value.trim());
+          try { g_myProgress = JSON.parse(res.progressData); } catch(e) { g_myProgress = {}; }
+
+          if(res.daysLeft <= 7 && res.daysLeft >= 0) {
+            const alertEl = document.getElementById('expiry-alert');
+            alertEl.innerHTML = `⚠️ 구독 만료까지 <b>${res.daysLeft}일</b> 남았습니다. 원활한 이용을 위해 연장을 문의해주세요.`;
+            alertEl.style.display = "block";
+          }
+          document.getElementById('modal-username').innerText = g_userName;
+          document.getElementById('header-username').innerText = g_userName;
+          document.getElementById('login-screen').style.display = "none";
+          document.getElementById('warning-modal').style.display = "flex";
+
+          document.body.addEventListener('click', function unlockAudio() {
+              if (window.speechSynthesis) window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+              document.body.removeEventListener('click', unlockAudio);
+          }, { once: true });
+        } else {
+          localStorage.removeItem('auto_id');
+          localStorage.removeItem('auto_pw');
+          const errorEl = document.getElementById('login-error');
+          errorEl.innerText = res.message;
+          errorEl.style.display = "block";
+        }
+      }
+
+      function onServerError(err) {
+        document.getElementById('login-loader').style.display = "none";
+        alert("서버 통신 중 에러가 발생했습니다: " + err.message);
+      }
+
+      function closeModalAndStart() {
+        document.getElementById('warning-modal').style.display = "none";
+        document.getElementById('app-screen').style.display = "block";
+        loadIndexTabs();
+      }
+
+      // --- [3] 다중 탭 (Index) 로직 및 화살표 스크롤 ---
+      function loadIndexTabs() {
+        document.getElementById('data-loader').innerText = "목차를 불러오는 중입니다...";
+        document.getElementById('data-loader').style.display = "block";
+        google.script.run.withSuccessHandler(renderTabs).withFailureHandler(onServerError).getAppIndex();
+      }
+
+      function renderTabs(indexList) {
+        document.getElementById('data-loader').style.display = "none";
+        const navContainer = document.getElementById('tab-nav');
+        navContainer.innerHTML = "";
+
+        if(indexList.length === 0) return;
+
+        // [추가] H열 검사를 통과한 전체 목차 중, 사용자의 체크박스 권한(g_allowedTabs)이 있는 탭만 추려냄
+        const authorizedTabs = indexList.filter(item => g_allowedTabs.includes(item.tabName));
+
+        if(authorizedTabs.length === 0) {
+          navContainer.innerHTML = '<div style="padding: 15px; color: #ea4335; font-weight: bold;">부여된 권한이 없습니다. 관리자에게 문의하세요.</div>';
+          return;
+        }
+
+        authorizedTabs.forEach((item, index) => {
+          const btn = document.createElement('button');
+          btn.className = "tab-btn";
+          if(index === 0) btn.classList.add('active'); 
+          btn.innerText = item.tabName; 
+          btn.onclick = () => loadTabData(item.tabName, btn);
+          navContainer.appendChild(btn);
+        });
+        // 기존 indexList[0] 대신 권한이 확인된 첫 번째 탭(authorizedTabs[0])으로 로딩 유지 (오류 방지)
+        loadTabData(authorizedTabs[0].tabName, navContainer.firstChild);
+        setTimeout(updateTabArrows, 100); // 탭 버튼들이 다 만들어진 직후에 화살표 숨길지 말지 센서 가동!
+      }
+
+      function scrollTabs(amount) {
+        const tabNav = document.getElementById('tab-nav');
+        tabNav.scrollLeft += amount;
+      }
+
+      // [추가] 탭 화살표 스르륵 숨기기/보이기 로직
+      function updateTabArrows() {
+        const nav = document.getElementById('tab-nav');
+        const leftArrow = document.getElementById('arrow-left');
+        const rightArrow = document.getElementById('arrow-right');
+        if(!nav || !leftArrow || !rightArrow) return;
+        
+        // 스크롤이 맨 왼쪽이면 왼쪽 화살표 숨김
+        if (nav.scrollLeft <= 0) leftArrow.classList.add('hidden');
+        else leftArrow.classList.remove('hidden');
+        
+        // 스크롤이 맨 오른쪽 끝에 닿거나, 탭이 하나밖에 없어서 스크롤할 게 없으면 오른쪽 화살표 숨김
+        if (Math.ceil(nav.scrollLeft + nav.clientWidth) >= nav.scrollWidth) rightArrow.classList.add('hidden');
+        else rightArrow.classList.remove('hidden');
+      }
+
+      // 스마트폰 가로/세로 돌릴 때 창 크기가 바뀌면 화살표 다시 계산
+      window.addEventListener('resize', updateTabArrows);
+
+      function loadTabData(tabName, clickedBtn) {
+        stopAll();
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        if(clickedBtn) clickedBtn.classList.add('active');
+
+        const container = document.getElementById('list-container');
+        container.innerHTML = "";
+        
+        // 탭 바뀔 때 필터 박스 숨기기 및 초기화
+        document.getElementById('filter-wrapper').style.display = "none";
+        document.getElementById('subTopicSelect').innerHTML = "";
+        document.getElementById('select-all-wrapper').style.display = "none";
+
+        document.getElementById('data-loader').innerText = `'${tabName}' 데이터를 불러오는 중...`;
+        document.getElementById('data-loader').style.display = "block";
+
+        google.script.run.withSuccessHandler(renderList).withFailureHandler(onServerError).getTabData(tabName);
+      }
+
+      // --- [5] 화면 렌더링 (소주제 그룹화) ---
+      function renderList(tabData) {
+        document.getElementById('data-loader').style.display = "none";
+        const container = document.getElementById('list-container');
+        g_currentTabData = tabData; 
+        
+        if (tabData.length === 0) {
+          container.innerHTML = '<div style="text-align:center; padding:30px; color:#888;">이 파트에는 아직 등록된 문장이 없습니다.</div>';
+          return;
+        }
+
+        let currentTopic = ""; 
+
+        tabData.forEach((item, index) => {
+          let prettyTopicName = item.subTopicId ? item.subTopicId.replace(/_/g, " ") : "";
+
+          // [수정] 그룹 이름이 아닌 개별 문장의 고유 키(itemKey)를 생성합니다!
+          const itemKey = item.subTopicId + "_row_" + index; 
+
+          const isDone = g_myProgress[itemKey] ? 'checked' : '';
+          const isPrinted = g_printSelection[itemKey] ? 'checked' : ''; // [추가] 탭 바뀔 때 인쇄 바구니 색상 유지
+          const cardClass = g_myProgress[itemKey] ? 'card completed topic-group' : 'card topic-group';
+          
+          const displayKor = item.koreanHTML || "";
+          const displayEng = item.englishHTML || "";
+          const displayMemo = item.memoHTML || ""; // [추가] 서버에서 넘어온 강사 메모
+          const safeEng = item.englishPlain ? String(item.englishPlain).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, " ").replace(/\r/g, "") : "";
+          const uniqueId = `card-${index}`;
+
+          // [추가] 메모 데이터가 있을 경우에만 버튼과 숨겨진 데이터 컨테이너를 생성 (조건부 렌더링)
+          const memoHtmlBlock = displayMemo ? `
+            <div style="margin-bottom: 15px;">
+               <button onclick="openMemoModal('memo-data-${uniqueId}')" style="background: #fff3cd; color: #856404; border: 1px solid #ffeeba; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: 0.2s;">💡 강사 메모 보기</button>
+               <div id="memo-data-${uniqueId}" style="display: none;">${displayMemo}</div>
+            </div>
+          ` : "";
+
+          // 고장 나지 않은, 완벽하게 닫힌 카드 HTML 구조입니다!
+          const html = `
+            <div class="${cardClass}" id="${uniqueId}" data-topic="${item.subTopicId}">
+              <div class="card-topic">${prettyTopicName}</div>
+              <div class="kor-text">${displayKor}</div>
+              ${memoHtmlBlock} <div class="eng-container">
+                 <button id="btn-reveal-${uniqueId}" class="btn-reveal" onclick="toggleAnswer('${uniqueId}')">👀 정답 보기</button>
+                 <div id="eng-text-${uniqueId}" class="eng-text">${displayEng}</div>
+              </div>
+              
+              <div class="btn-group">
+                <button id="btn-listen-${uniqueId}" class="btn-icon btn-listen" onclick="toggleTTS('${uniqueId}', '${safeEng}')">🔊 듣기</button>
+                <button id="btn-record-${uniqueId}" class="btn-icon btn-record" onclick="toggleRecord('${uniqueId}')">🎤 녹음</button>
+                <button id="btn-playmy-${uniqueId}" class="btn-icon btn-play-my" style="display: none;" onclick="playMyRecord('${uniqueId}')">▶️ 내발음</button>
+                <button class="btn-icon btn-check ${isDone}" onclick="toggleCheck('${uniqueId}', '${itemKey}')" title="암기 완료 표시 (진도율 누적)">✔ 마스터</button>
+                <button class="btn-icon btn-print ${isPrinted}" id="btn-print-${uniqueId}" onclick="togglePrint('${uniqueId}', '${itemKey}')" title="출력할 문장의 [📥 인쇄] 버튼을 눌러주세요">📥 인쇄</button>
+              </div>
+            </div>
+          `;
+          container.insertAdjacentHTML('beforeend', html);
+        });
+
+        // 렌더링이 끝나면 필터링 셀렉트 박스를 만듭니다.
+        buildSubTopicFilter(tabData);
+        document.getElementById('select-all-wrapper').style.display = "block"; 
+        syncSelectAllButton(); // [추가] 화면이 새로 그려질 때 상단 전체 버튼 색상도 동기화
+      } // <- renderList 함수 끝나는 괄호
+
+      // --- [추가 기능] 소주제 필터링 로직 ---
+      function buildSubTopicFilter(tabData) {
+         const selectEl = document.getElementById('subTopicSelect');
+         selectEl.innerHTML = '<option value="all">📂 전체 보기 (모든 Day)</option>';
+         
+         // 중복 없는 소주제 ID 목록 추출
+         const uniqueTopics = [...new Set(tabData.map(item => item.subTopicId))];
+         
+         if(uniqueTopics.length > 0) {
+            uniqueTopics.forEach(topicId => {
+               if(topicId) {
+                  let prettyName = topicId.replace(/_/g, " ");
+                  const option = document.createElement('option');
+                  option.value = topicId;
+                  option.innerText = `🏷️ ${prettyName}`;
+                  selectEl.appendChild(option);
+               }
+            });
+            document.getElementById('filter-wrapper').style.display = "block";
+         }
+      }
+
+      function filterBySubTopic() {
+         const selectedValue = document.getElementById('subTopicSelect').value;
+         const allGroups = document.querySelectorAll('.topic-group'); // 헤더와 카드 모두 선택
+
+         allGroups.forEach(el => {
+            // '전체보기'를 선택했거나, 카드의 data-topic이 선택한 값과 같으면 보여줌
+            if(selectedValue === "all" || el.getAttribute('data-topic') === selectedValue) {
+               el.style.display = "block";
+            } else {
+               el.style.display = "none";
+            }
+         });
+      }
+
+      function toggleAnswer(cardId) {
+        const textDiv = document.getElementById(`eng-text-${cardId}`);
+        const btn = document.getElementById(`btn-reveal-${cardId}`);
+        if (textDiv.style.display === 'none' || textDiv.style.display === '') {
+          textDiv.style.display = 'block'; btn.innerText = '🙈 정답 가리기'; btn.classList.add('active');
+        } else {
+          textDiv.style.display = 'none'; btn.innerText = '👀 정답 보기'; btn.classList.remove('active');
+        }
+      }
+
+      // --- [기능] 소리 정지 ---
+      function stopAll() {
+        window.speechSynthesis.cancel();
+        if (ttsLoopTimer) clearTimeout(ttsLoopTimer);
+        currentTTS = null;
+
+        if (g_currentAudio) {
+           g_currentAudio.pause();
+           g_currentAudio = null;
+        }
+
+        document.querySelectorAll('.btn-listen').forEach(b => { b.classList.remove('playing'); b.innerText = '🔊 듣기'; });
+      }
+
+      // --- [최종 수정] 렉 완벽 제거를 위한 백그라운드 목소리 로딩 ---
+      let cachedEngVoices = [];
+      function initVoices() {
+        const voices = window.speechSynthesis.getVoices();
+        cachedEngVoices = voices.filter(voice => {
+          const langCode = voice.lang.toLowerCase().replace('_', '-');
+          return ['en-us', 'en-gb', 'en-au', 'en-ca', 'en-ie', 'en-nz'].some(allowed => langCode.includes(allowed));
+        });
+      }
+      // 스마트폰 브라우저가 목소리 준비를 마쳤다는 신호를 보내면 그때 스르륵 가져옴 (버튼 렉 원천 차단!)
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = initVoices;
+      }
+      initVoices(); 
+
+      function toggleTTS(cardId, text) {
+        const btn = document.getElementById(`btn-listen-${cardId}`);
+        if (btn.classList.contains('playing')) { stopAll(); return; }
+        stopAll(); 
+        
+        btn.classList.add('playing'); btn.innerText = '🛑 멈춤';
+
+        function speakLoop() {
+          if (!btn.classList.contains('playing')) return;
+          
+          const msg = new SpeechSynthesisUtterance(text);
+          
+          if (cachedEngVoices.length > 0) {
+            const randomIdx = Math.floor(Math.random() * cachedEngVoices.length);
+            msg.voice = cachedEngVoices[randomIdx];
+            msg.lang = cachedEngVoices[randomIdx].lang;
+          } else {
+            msg.lang = 'en-US'; 
+          }
+          
+          msg.rate = 1.2; // 실전 원어민 텐션 유지
+          
+          // 가비지 컬렉션(기억상실증) 방어용 글로벌 변수 묶기
+          window._currentTTSMsg = msg; 
+          
+          msg.onend = function() { ttsLoopTimer = setTimeout(speakLoop, 500); };
+          msg.onerror = function() { ttsLoopTimer = setTimeout(speakLoop, 500); };
+          
+          window.speechSynthesis.speak(msg);
+        }
+        
+        speakLoop();
+      }
+
+      // --- [추가 기능] 마이크 녹음기 로직 ---
+      async function toggleRecord(cardId) {
+        const btn = document.getElementById(`btn-record-${cardId}`);
+        const playBtn = document.getElementById(`btn-playmy-${cardId}`);
+        
+        if (btn.classList.contains('recording')) {
+           g_mediaRecorder.stop();
+           btn.classList.remove('recording');
+           btn.innerText = '🎤 다시녹음';
+           return;
+        }
+
+        stopAll(); 
+        
+        try {
+           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+           g_mediaRecorder = new MediaRecorder(stream);
+           g_audioChunks = [];
+
+           g_mediaRecorder.ondataavailable = e => { g_audioChunks.push(e.data); };
+           g_mediaRecorder.onstop = () => {
+              const audioBlob = new Blob(g_audioChunks, { type: 'audio/webm' });
+              g_audioBlobs[cardId] = audioBlob; 
+              playBtn.style.display = 'flex'; 
+              stream.getTracks().forEach(track => track.stop());
+           };
+
+           g_mediaRecorder.start();
+           btn.classList.add('recording');
+           btn.innerText = '⏹️ 정지';
+           playBtn.style.display = 'none';
+
+        } catch(err) {
+           alert("마이크 권한을 허용해야 녹음 기능을 사용할 수 있습니다.");
+        }
+      }
+
+      function playMyRecord(cardId) {
+         stopAll();
+         const audioBlob = g_audioBlobs[cardId];
+         if(!audioBlob) return;
+
+         const audioUrl = URL.createObjectURL(audioBlob);
+         g_currentAudio = new Audio(audioUrl);
+         g_currentAudio.play();
+      }
+
+      function toggleCheck(cardId, subTopicId) {
+        const card = document.getElementById(cardId);
+        const btn = card.querySelector('.btn-check');
+        
+        if (g_myProgress[subTopicId]) {
+          delete g_myProgress[subTopicId];
+          btn.classList.remove('checked');
+          card.classList.remove('completed');
+        } else {
+          g_myProgress[subTopicId] = true;
+          btn.classList.add('checked');
+          card.classList.add('completed');
+        }
+        const progressString = JSON.stringify(g_myProgress);
+        google.script.run.saveProgress(g_userId, progressString);
+      }
+
+      // [추가 기능] 인쇄 장바구니 담기 토글 (서버에 저장 안 되는 일회성 데이터)
+      function togglePrint(cardId, itemKey) {
+        const btn = document.getElementById(`btn-print-${cardId}`);
+        if (g_printSelection[itemKey]) {
+          delete g_printSelection[itemKey];
+          btn.classList.remove('checked');
+        } else {
+          g_printSelection[itemKey] = true;
+          btn.classList.add('checked');
+        }
+        syncSelectAllButton(); // [추가] 개별 버튼 누를 때마다 상단 전체 버튼 상태도 확인!
+      }
+
+      // --- [수정된 기능] 선택 항목 PDF 다운로드 (가로형 좌우 1:1 분할 & 공백 제거) ---
+      function downloadPDF() {
+         const checkedItems = g_currentTabData.filter((item, index) => {
+            const itemKey = item.subTopicId + "_row_" + index;
+            // [핵심 로직 변경] 마스터 진도율(g_myProgress)이 아닌 인쇄 목록(g_printSelection) 참조
+            return g_printSelection[itemKey]; 
+         });
+         
+         if(checkedItems.length === 0) {
+            alert("출력할 문장이 없습니다. 먼저 각 문장의 [📥 인쇄] 버튼을 눌러주세요.");
+            return;
+         }
+
+         // 1. 소주제(Day)별로 묶어줍니다.
+         const groupedItems = {};
+         checkedItems.forEach(item => {
+            if(!groupedItems[item.subTopicId]) {
+               groupedItems[item.subTopicId] = [];
+            }
+            groupedItems[item.subTopicId].push(item);
+         });
+
+         const printWindow = window.open('', '_blank');
+         
+         // 2. 가로형(Landscape) 강제 및 좌우 분할(Flex) CSS 적용
+         let printHtml = `
+            <html>
+            <head>
+               <title>나만의 회화책 - ${g_userName}님</title>
+               <style>
+                  /* 가로 출력 고정 */
+                  @page { size: landscape; margin: 15mm; }
+                  body { font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; color: #000; line-height: 1.6; margin: 0; padding: 0; }
+                  h1 { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; font-size: 24px; text-align: center; }
+                  
+                  /* 파란색 소제목 & 묶음 잘림 방지 (대표님 원본 로직 복구) */
+.topic-section { margin-bottom: 30px; } /* 여기서 자물쇠를 빼야 브라우저가 첫 페이지 빈 공간부터 차곡차곡 채웁니다! */
+.topic-title { font-size: 18px; font-weight: bold; color: #4285f4; background-color: #f0f2f5; padding: 8px 15px; border-left: 5px solid #4285f4; margin-bottom: 15px; border-radius: 0 5px 5px 0; page-break-after: avoid; break-after: avoid; }
+                  
+                  /* [수정] 절단 방지 최상위 래퍼 (여백만 넉넉히 주고 점선은 제거하여 깨끗하게 유지) */
+                  .print-item-wrapper { margin-bottom: 25px; page-break-inside: avoid; break-inside: avoid; }
+                  
+                  /* [수정] 좌우 나란히 배치 (한국어 좌 / 영어 우) - 문장 바로 밑에 점선 1줄 추가! */
+                  .item-box { display: flex; flex-direction: row; justify-content: space-between; gap: 20px; padding-bottom: 12px; border-bottom: 1px dashed #ccc; }
+                  .kor-area { flex: 0 0 45%; font-size: 14px; word-break: keep-all; }
+                  .eng-area { flex: 0 0 50%; font-size: 15px; } 
+                  
+                  /* [수정] 하단 강사 메모 영역 디자인 (배경, 테두리 없이 순수 텍스트만 출력) */
+                  .memo-area { margin-top: 12px; font-size: 13px; color: #444; }
+               </style>
+            </head>
+            <body>
+               <h1>📖 나만의 영어회화 교재 (${checkedItems.length}세트)</h1>
+         `;
+
+         // 3. 그룹별로 순회하며 좌우 분할 HTML을 그립니다.
+         for (const [topicId, items] of Object.entries(groupedItems)) {
+            let prettyTopicName = topicId.replace(/_/g, " ");
+            
+            printHtml += `
+               <div class="topic-section">
+                  <div class="topic-title">${prettyTopicName}</div>
+            `;
+            
+            items.forEach(item => {
+               // [수정] 강사 메모 유무 확인 및 군더더기 없는 순수 데이터 출력
+               const memoHtml = item.memoHTML || "";
+               const memoBlock = memoHtml ? `<div class="memo-area">${memoHtml}</div>` : "";
+
+               // [핵심] 한글 왼쪽, 영어 오른쪽 배치를 래퍼(Wrapper)로 감싸 절단 방지 + 메모 추가
+               printHtml += `
+                  <div class="print-item-wrapper">
+                     <div class="item-box">
+                        <div class="kor-area">${item.koreanHTML}</div>
+                        <div class="eng-area">${item.englishHTML}</div>
+                     </div>
+                     ${memoBlock}
+                  </div>
+               `;
+            });
+            
+            printHtml += `</div>`; 
+         }
+
+         printHtml += `</body></html>`;
+         printWindow.document.write(printHtml);
+         printWindow.document.close();
+         
+         // 인쇄 창 호출
+         printWindow.onload = function() {
+            printWindow.focus();
+            printWindow.print();
+         };
+      }
+
+      // --- [추가 기능] 현재 탭의 모든 문장 인쇄 전체 선택 / 해제 ---
+      function toggleSelectAll() {
+         let allChecked = true;
+         g_currentTabData.forEach((item, index) => {
+            const itemKey = item.subTopicId + "_row_" + index;
+            if(!g_printSelection[itemKey]) allChecked = false;
+         });
+
+         g_currentTabData.forEach((item, index) => {
+            const itemKey = item.subTopicId + "_row_" + index;
+            const btn = document.querySelector(`.btn-print[id*="card-${index}"]`);
+
+            if(allChecked) {
+               delete g_printSelection[itemKey];
+               if(btn) btn.classList.remove('checked'); // 하위 버튼들 일제히 하얗게!
+            } else {
+               g_printSelection[itemKey] = true;
+               if(btn) btn.classList.add('checked');    // 하위 버튼들 일제히 까맣게!
+            }
+         });
+         
+         syncSelectAllButton(); // 하위 버튼 싹 다 바꾸고 나서 상단 메인 버튼도 동기화
+      }
+
+      // [추가] 전체 담기 버튼의 색상과 텍스트를 현재 장바구니 상태와 100% 동기화하는 함수
+      function syncSelectAllButton() {
+         const selectAllBtn = document.getElementById('btn-select-all');
+         if(!selectAllBtn || g_currentTabData.length === 0) return;
+
+         let allChecked = true;
+         g_currentTabData.forEach((item, index) => {
+            const itemKey = item.subTopicId + "_row_" + index;
+            if(!g_printSelection[itemKey]) allChecked = false;
+         });
+
+         if(allChecked) {
+            selectAllBtn.style.background = "#333";
+            selectAllBtn.style.color = "white";
+            selectAllBtn.innerText = "📥 인쇄 전체 해제";
+         } else {
+            selectAllBtn.style.background = "#eef2f5";
+            selectAllBtn.style.color = "#333";
+            selectAllBtn.innerText = "📥 인쇄 전체 담기";
+         }
+      }
+      window.onload = function() {
+         const savedId = localStorage.getItem('auto_id');
+         const savedPw = localStorage.getItem('auto_pw');
+         
+         // 수첩에 아이디/비번이 있으면, 자동으로 입력창을 채우고 로그인을 시도합니다!
+         if(savedId && savedPw) {
+            document.getElementById('loginId').value = savedId;
+            document.getElementById('loginPw').value = savedPw;
+            attemptLogin(); 
+          } else {
+            // ▼▼▼ 이 한 줄이 핵심입니다! 수첩에 아무것도 없으면 로그인 화면을 강제로 띄워라! ▼▼▼
+            document.getElementById('login-screen').style.display = 'flex';
+         }
+      };
+
+      function logout() {
+         // 1. 수첩(자동 로그인 기록)을 깨끗이 지웁니다.
+         localStorage.removeItem('auto_id');
+         localStorage.removeItem('auto_pw');
+         
+         // 2. 현재 공부 화면을 숨기고 로그인 화면을 다시 강제로 띄웁니다.
+         document.getElementById('app-screen').style.display = 'none';
+         document.getElementById('login-screen').style.display = 'flex';
+         
+         // 3. 입력창도 깨끗하게 비워줍니다.
+         document.getElementById('loginId').value = '';
+         document.getElementById('loginPw').value = '';
+      }
+
+      // --- [추가 기능] 마이페이지 열고 닫기 ---
+      function openMyPage() {
+        document.getElementById('mypage-name').innerText = g_userName;
+        document.getElementById('mypage-id').innerText = g_userId;
+        document.getElementById('mypage-lastdate').innerText = g_lastDate;
+        document.getElementById('mypage-payment').innerText = g_paymentDate;
+        document.getElementById('mypage-expire').innerText = g_expireDate;
+        document.getElementById('mypage-daysleft').innerText = g_daysLeft;
+        document.getElementById('mypage-note').innerText = g_note;
+
+        // 진도율 계산: 체크된 문장 갯수 세기
+        const checkedCount = Object.keys(g_myProgress).length;
+        document.getElementById('mypage-progress-count').innerText = checkedCount;
+
+        document.getElementById('mypage-modal').style.display = "flex";
+      }
+
+      function closeMyPage() {
+        document.getElementById('mypage-modal').style.display = "none";
+      }
+
+      // --- [추가 기능] 결제 히스토리 이중 모달 열고 닫기 로직 ---
+      function openHistoryModal() {
+        const listContainer = document.getElementById('history-list');
+        listContainer.innerHTML = ""; // 기존 목록 초기화 (렉 방지)
+        
+        if (g_paymentHistory.length === 0) {
+          listContainer.innerHTML = "<li style='list-style:none; color:#888; text-align:center; padding: 10px 0; margin-left:-20px;'>등록된 결제 내역이 없습니다.</li>";
+        } else {
+          g_paymentHistory.forEach(item => {
+            const li = document.createElement('li');
+            li.innerText = item;
+            listContainer.appendChild(li);
+          });
+        }
+        document.getElementById('history-modal').style.display = "flex";
+      }
+
+      function closeHistoryModal() {
+        document.getElementById('history-modal').style.display = "none";
+      }
+
+    // --- [추가 기능] 이용 안내 팝업 열고 닫기 ---
+      function openGuide() {
+        document.getElementById('guide-modal').style.display = "flex";
+      }
+      function closeGuide() {
+        document.getElementById('guide-modal').style.display = "none";
+      }
+
+      // --- [추가 기능] 강사 메모 모달 열고 닫기 로직 ---
+      function openMemoModal(dataId) {
+        // 숨겨둔 메모 데이터를 통째로 복사해 모달창에 삽입 (따옴표, 줄바꿈 오류 원천 차단)
+        const memoHtml = document.getElementById(dataId).innerHTML;
+        document.getElementById('memo-modal-content').innerHTML = memoHtml;
+        
+        // [추가] 모달창을 열 때마다 무조건 화면 정중앙으로 위치 초기화 (구석에 처박히는 버그 방지)
+        const modalBox = document.getElementById('memo-modal-box');
+        modalBox.style.top = '50%';
+        modalBox.style.left = '50%';
+        
+        document.getElementById('memo-modal').style.display = "flex";
+      }
+
+      function closeMemoModal() {
+        document.getElementById('memo-modal').style.display = "none";
+        document.getElementById('memo-modal-content').innerHTML = ""; // 내용 초기화
+      }
+
+      // --- [신규 기능] 강사 메모 모달 드래그 앤 드롭 (PC & 모바일 완벽 호환 엔진) ---
+      const dragHeader = document.getElementById('memo-modal-header');
+      const dragBox = document.getElementById('memo-modal-box');
+      let isDragging = false;
+      let startX, startY, initialLeft, initialTop;
+
+      function startDrag(e) {
+        isDragging = true;
+        // 마우스인지 터치인지 구분하여 최초 좌표 획득
+        const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        startX = clientX;
+        startY = clientY;
+        
+        // 박스의 현재 픽셀 좌표 획득
+        initialLeft = dragBox.offsetLeft;
+        initialTop = dragBox.offsetTop;
+        dragHeader.style.cursor = 'grabbing'; // 움켜쥔 손 모양으로 변경
+      }
+
+      function onDrag(e) {
+        if (!isDragging) return;
+        e.preventDefault(); // 스크롤 등 기본 이벤트 차단 (모바일 고무줄 현상 방어)
+
+        const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+
+        // 이동한 거리(Delta) 계산
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        // 박스의 실시간 좌표 업데이트
+        dragBox.style.left = `${initialLeft + dx}px`;
+        dragBox.style.top = `${initialTop + dy}px`;
+      }
+
+      function stopDrag() {
+        isDragging = false;
+        dragHeader.style.cursor = 'grab'; // 다시 펼친 손 모양으로 복귀
+      }
+
+      // 1. 센서 장착 (마우스)
+      dragHeader.addEventListener('mousedown', startDrag);
+      document.addEventListener('mousemove', onDrag, { passive: false });
+      document.addEventListener('mouseup', stopDrag);
+
+      // 2. 센서 장착 (모바일 터치)
+      dragHeader.addEventListener('touchstart', startDrag, { passive: false });
+      document.addEventListener('touchmove', onDrag, { passive: false });
+      document.addEventListener('touchend', stopDrag);
+    </script>
+  </body>
+</html>
