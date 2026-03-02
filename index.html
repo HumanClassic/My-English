@@ -513,9 +513,6 @@
         // 기존 indexList[0] 대신 권한이 확인된 첫 번째 탭(authorizedTabs[0])으로 로딩 유지 (오류 방지)
         loadTabData(authorizedTabs[0].tabName, navContainer.firstChild);
         setTimeout(updateTabArrows, 100); // 탭 버튼들이 다 만들어진 직후에 화살표 숨길지 말지 센서 가동!
-        
-        // [신규 추가] 첫 번째 탭 로딩이 시작된 직후, 나머지 탭들을 조용히 백그라운드에서 긁어옵니다.
-        preloadRemainingTabs(authorizedTabs);
       }
 
       function scrollTabs(amount) {
@@ -624,6 +621,9 @@
         buildSubTopicFilter(tabData);
         document.getElementById('select-all-wrapper').style.display = "block"; 
         syncSelectAllButton(); // [추가] 화면이 새로 그려질 때 상단 전체 버튼 색상도 동기화
+        
+        // [신규 추가] 화면 렌더링이 끝나고 사용자가 글씨를 읽기 시작할 때(1초 뒤), 백그라운드 릴레이 캐싱 조용히 시작!
+        setTimeout(startBackgroundCache, 1000); 
       } // <- renderList 함수 끝나는 괄호
 
       // --- [추가 기능] 소주제 필터링 로직 ---
@@ -1101,31 +1101,45 @@
       document.addEventListener('touchmove', onDrag, { passive: false });
       document.addEventListener('touchend', stopDrag);
 
-      // --- [신규 추가] 프론트엔드 백그라운드 캐싱 엔진 (방법 A) ---
-      function preloadRemainingTabs(authorizedTabs) {
-        // 첫 번째 탭(인덱스 0)은 이미 화면에 로딩 중이므로, 인덱스 1부터 순회합니다.
-        for (let i = 1; i < authorizedTabs.length; i++) {
-          const tabName = authorizedTabs[i].tabName;
-          
-          // 이미 캐시에 데이터가 있다면(사용자가 그새 클릭했거나 등) 중복 요청 방지
-          if (window.google.script.run._tabCache[tabName]) continue;
+      // --- [신규 추가/수정] 프론트엔드 백그라운드 순차 캐싱 엔진 (릴레이 방식) ---
+      let g_preloadQueue = [];
+      let g_isPreloading = false;
 
-          // UI 로더(data-loader)를 띄우지 않고 조용히 백그라운드에서 통신
-          fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: "getTabData", tabName: tabName })
-          })
-          .then(res => res.json())
-          .then(data => {
-            // 서버에서 몰래 받아온 데이터를 기존 기억 장치에 세팅
-            window.google.script.run._tabCache[tabName] = data; 
-            console.log(`[백그라운드 캐싱 완료] ${tabName} 탭 데이터가 창고에 적재되었습니다.`);
-          })
-          .catch(err => {
-            console.error(`[백그라운드 캐싱 실패] ${tabName}:`, err);
-            // 실패하더라도 사용자가 해당 탭을 누르면 기존 loadTabData 로직이 다시 정식으로 재시도하므로 안전합니다.
-          });
+      function startBackgroundCache() {
+        if(g_isPreloading) return; 
+        
+        // g_allowedTabs(허용된 전체 탭) 중에서 아직 캐시에 없는 것만 대기열에 줄 세우기
+        g_preloadQueue = g_allowedTabs.filter(tabName => !window.google.script.run._tabCache[tabName]);
+        if(g_preloadQueue.length === 0) return; 
+        
+        g_isPreloading = true;
+        processPreloadQueue();
+      }
+
+      function processPreloadQueue() {
+        if(g_preloadQueue.length === 0) {
+          g_isPreloading = false;
+          console.log("[순차 캐싱] 모든 허용 탭 백그라운드 적재 완료!");
+          return;
         }
+        
+        const nextTab = g_preloadQueue.shift(); // 대기열에서 맨 앞 탭 하나만 꺼냄
+        
+        fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: "getTabData", tabName: nextTab })
+        })
+        .then(res => res.json())
+        .then(data => {
+          window.google.script.run._tabCache[nextTab] = data; 
+          console.log(`[순차 캐싱 완료] ${nextTab} 탭 적재됨.`);
+          // ★ 핵심: 구글 GAS 서버가 숨 돌릴 틈(0.5초)을 주고 다음 탭 요청
+          setTimeout(processPreloadQueue, 500); 
+        })
+        .catch(err => {
+          console.error(`[순차 캐싱 에러] ${nextTab}:`, err);
+          setTimeout(processPreloadQueue, 500); // 에러 나도 멈추지 않고 다음 탭 진행
+        });
       }
     </script>
   </body>
