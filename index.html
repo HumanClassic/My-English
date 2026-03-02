@@ -621,9 +621,6 @@
         buildSubTopicFilter(tabData);
         document.getElementById('select-all-wrapper').style.display = "block"; 
         syncSelectAllButton(); // [추가] 화면이 새로 그려질 때 상단 전체 버튼 색상도 동기화
-        
-        // [신규 추가] 화면 렌더링이 끝나고 사용자가 글씨를 읽기 시작할 때(1초 뒤), 백그라운드 릴레이 캐싱 조용히 시작!
-        setTimeout(startBackgroundCache, 1000); 
       } // <- renderList 함수 끝나는 괄호
 
       // --- [추가 기능] 소주제 필터링 로직 ---
@@ -1100,52 +1097,6 @@
       dragHeader.addEventListener('touchstart', startDrag, { passive: false });
       document.addEventListener('touchmove', onDrag, { passive: false });
       document.addEventListener('touchend', stopDrag);
-
-      // --- [수정 완료] 프론트엔드 백그라운드 순차 캐싱 엔진 ---
-      let g_preloadQueue = [];
-      let g_isPreloading = false;
-
-      function startBackgroundCache() {
-        // 이미 돌고 있으면 중복 실행 금지
-        if(g_isPreloading) return; 
-        
-        // ★ 핵심 수정: Polyfill 내부의 정확한 캐시 창고(window.google.script.run._tabCache)를 바라보도록 수정
-        const actualCache = window.google.script.run._tabCache;
-        
-        g_preloadQueue = g_allowedTabs.filter(tabName => !actualCache[tabName]);
-        
-        // 이미 모든 탭이 캐시에 있거나 대기열이 없으면 바로 종료 (로그인 지연 원천 차단)
-        if(g_preloadQueue.length === 0) return; 
-        
-        g_isPreloading = true;
-        processPreloadQueue();
-      }
-
-      function processPreloadQueue() {
-        if(g_preloadQueue.length === 0) {
-          g_isPreloading = false;
-          console.log("[순차 캐싱] 모든 허용 탭 백그라운드 적재 완료!");
-          return;
-        }
-        
-        const nextTab = g_preloadQueue.shift(); 
-        
-        fetch(API_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: "getTabData", tabName: nextTab })
-        })
-        .then(res => res.json())
-        .then(data => {
-          // ★ 핵심 수정: 받아온 데이터를 Polyfill이 실제 찾는 창고에 정확히 집어넣음
-          window.google.script.run._tabCache[nextTab] = data; 
-          console.log(`[순차 캐싱 완료] ${nextTab} 탭 적재됨.`);
-          setTimeout(processPreloadQueue, 1000); // GAS 서버 보호를 위해 1초 간격으로 늘림
-        })
-        .catch(err => {
-          console.error(`[순차 캐싱 에러] ${nextTab}:`, err);
-          setTimeout(processPreloadQueue, 1000); 
-        });
-      }
     </script>
   </body>
 </html>
