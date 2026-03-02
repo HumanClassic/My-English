@@ -439,8 +439,13 @@
           g_daysLeft = res.daysLeft || 0;
           g_lastDate = res.lastDate || "기록 없음";
           g_note = res.note || "작성된 내용이 없습니다.";
-          g_allowedTabs = res.allowedTabs || [];       // [추가] 서버에서 받은 허용 탭 권한 
+          g_allowedTabs = res.allowedTabs || [];      // [추가] 서버에서 받은 허용 탭 권한 
           g_paymentHistory = res.paymentHistory || []; // [추가] 서버에서 받은 결제 내역 배열 
+
+          // [신규 추가 - Single Payload 수신] 서버가 로그인 시 한 번에 싸준 보따리를 캐시 창고에 즉시 적재
+          if (res.allTabData) {
+            window.google.script.run._tabCache = res.allTabData;
+          }
 
           localStorage.setItem('auto_id', g_userId);
           localStorage.setItem('auto_pw', document.getElementById('loginPw').value.trim());
