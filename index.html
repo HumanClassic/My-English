@@ -1101,15 +1101,20 @@
       document.addEventListener('touchmove', onDrag, { passive: false });
       document.addEventListener('touchend', stopDrag);
 
-      // --- [신규 추가/수정] 프론트엔드 백그라운드 순차 캐싱 엔진 (릴레이 방식) ---
+      // --- [수정 완료] 프론트엔드 백그라운드 순차 캐싱 엔진 ---
       let g_preloadQueue = [];
       let g_isPreloading = false;
 
       function startBackgroundCache() {
+        // 이미 돌고 있으면 중복 실행 금지
         if(g_isPreloading) return; 
         
-        // g_allowedTabs(허용된 전체 탭) 중에서 아직 캐시에 없는 것만 대기열에 줄 세우기
-        g_preloadQueue = g_allowedTabs.filter(tabName => !window.google.script.run._tabCache[tabName]);
+        // ★ 핵심 수정: Polyfill 내부의 정확한 캐시 창고(window.google.script.run._tabCache)를 바라보도록 수정
+        const actualCache = window.google.script.run._tabCache;
+        
+        g_preloadQueue = g_allowedTabs.filter(tabName => !actualCache[tabName]);
+        
+        // 이미 모든 탭이 캐시에 있거나 대기열이 없으면 바로 종료 (로그인 지연 원천 차단)
         if(g_preloadQueue.length === 0) return; 
         
         g_isPreloading = true;
@@ -1123,7 +1128,7 @@
           return;
         }
         
-        const nextTab = g_preloadQueue.shift(); // 대기열에서 맨 앞 탭 하나만 꺼냄
+        const nextTab = g_preloadQueue.shift(); 
         
         fetch(API_URL, {
           method: 'POST',
@@ -1131,14 +1136,14 @@
         })
         .then(res => res.json())
         .then(data => {
+          // ★ 핵심 수정: 받아온 데이터를 Polyfill이 실제 찾는 창고에 정확히 집어넣음
           window.google.script.run._tabCache[nextTab] = data; 
           console.log(`[순차 캐싱 완료] ${nextTab} 탭 적재됨.`);
-          // ★ 핵심: 구글 GAS 서버가 숨 돌릴 틈(0.5초)을 주고 다음 탭 요청
-          setTimeout(processPreloadQueue, 500); 
+          setTimeout(processPreloadQueue, 1000); // GAS 서버 보호를 위해 1초 간격으로 늘림
         })
         .catch(err => {
           console.error(`[순차 캐싱 에러] ${nextTab}:`, err);
-          setTimeout(processPreloadQueue, 500); // 에러 나도 멈추지 않고 다음 탭 진행
+          setTimeout(processPreloadQueue, 1000); 
         });
       }
     </script>
