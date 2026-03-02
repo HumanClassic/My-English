@@ -442,12 +442,8 @@
           g_allowedTabs = res.allowedTabs || [];      // [추가] 서버에서 받은 허용 탭 권한 
           g_paymentHistory = res.paymentHistory || []; // [추가] 서버에서 받은 결제 내역 배열 
 
-          // [신규 추가 - Single Payload 수신] 서버가 로그인 시 한 번에 싸준 보따리를 캐시 창고에 즉시 적재
-          if (res.allTabData) {
-            window.google.script.run._tabCache = res.allTabData;
-          }
-
           localStorage.setItem('auto_id', g_userId);
+
           localStorage.setItem('auto_pw', document.getElementById('loginPw').value.trim());
           try { g_myProgress = JSON.parse(res.progressData); } catch(e) { g_myProgress = {}; }
 
@@ -518,6 +514,8 @@
         // 기존 indexList[0] 대신 권한이 확인된 첫 번째 탭(authorizedTabs[0])으로 로딩 유지 (오류 방지)
         loadTabData(authorizedTabs[0].tabName, navContainer.firstChild);
         setTimeout(updateTabArrows, 100); // 탭 버튼들이 다 만들어진 직후에 화살표 숨길지 말지 센서 가동!
+        
+        startIsolatedBackgroundCache(); // 💡 목차가 완성되면 격리된 캐시 엔진 시동 (중복 실행 방지됨)
       }
 
       function scrollTabs(amount) {
@@ -1102,6 +1100,40 @@
       dragHeader.addEventListener('touchstart', startDrag, { passive: false });
       document.addEventListener('touchmove', onDrag, { passive: false });
       document.addEventListener('touchend', stopDrag);
+
+      // --- [최종 진화형] 단 1회만 작동하는 싱글톤 격리 캐싱 엔진 ---
+      let _isCacheEngineStarted = false;
+
+      function startIsolatedBackgroundCache() {
+        if (_isCacheEngineStarted) return; // 앱 켜지고 평생 딱 1번만 실행됨 (타이머 중첩/폭발 원천 차단)
+        _isCacheEngineStarted = true;
+
+        // 허용 탭 목록 복사 후, 현재 로딩 중인 첫 번째 탭은 대기열에서 제거
+        let queue = [...g_allowedTabs];
+        queue.shift(); 
+
+        function fetchNextSilently() {
+          if (queue.length === 0) return; // 모든 탭 캐싱 완료
+          let nextTab = queue.shift();
+
+          fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "getTabData", tabName: nextTab })
+          })
+          .then(res => res.json())
+          .then(data => {
+            window.google.script.run._tabCache[nextTab] = data; // 정확한 캐시 창고에 저장
+            console.log(`[격리 캐싱 완료] ${nextTab}`);
+            setTimeout(fetchNextSilently, 1500); // 💡 구글 서버 뻗지 않게 무조건 1.5초 휴식 후 다음 탭 진행
+          })
+          .catch(err => {
+            setTimeout(fetchNextSilently, 1500); // 에러나도 멈추지 않고 1.5초 뒤 다음 탭 진행
+          });
+        }
+
+        // 사용자가 첫 번째 탭 글씨를 읽기 시작할 즈음(3초 뒤) 아주 조용히 엔진 가동
+        setTimeout(fetchNextSilently, 3000); 
+      }
     </script>
   </body>
 </html>
